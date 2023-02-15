@@ -52,6 +52,7 @@ class TrainVQGAN:
                     disc_real = self.discriminator(imgs)
                     disc_fake = self.discriminator(decoded_images)
 
+                    # [INFO] start discriminator after some steps
                     disc_factor = self.vqgan.adopt_weight(args.disc_factor, epoch * steps_one_epoch + i,
                                                           threshold=args.disc_start)
                     perceptual_loss = self.perceptual_loss(imgs, decoded_images)
@@ -76,7 +77,7 @@ class TrainVQGAN:
                     self.opt_vq.step()
                     self.opt_disc.step()
 
-                    if i % 10 == 0:
+                    if i >= len(train_dataset)-1:
                         with torch.no_grad():
                             both = torch.cat((imgs[:4], decoded_images.add(1).mul(0.5)[:4]))
                             vutils.save_image(both, os.path.join("results", f"{epoch}_{i}.jpg"), nrow=4)
@@ -107,7 +108,7 @@ if __name__ == '__main__':
     parser.add_argument('--perceptual-loss-factor', type=float, default=1., help='Weighting factor for perceptual loss.')
 
     args = parser.parse_args()
-    args.dataset_path = r"C:\Users\dome\datasets\flowers"
+    args.dataset_path = "./data/"
 
     train_vqgan = TrainVQGAN(args)
 

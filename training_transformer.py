@@ -9,7 +9,8 @@ from torchvision import utils as vutils
 from transformer import VQGANTransformer
 from utils import load_data, plot_images
 from lr_schedule import WarmupLinearLRSchedule
-from torch.utils.tensorboard import SummaryWriter
+# from torch.utils.tensorboard import SummaryWriter
+import wandb
 
 
 class TrainTransformer:
@@ -29,10 +30,11 @@ class TrainTransformer:
         if args.start_from_epoch > 1:
             self.model.load_checkpoint(args.start_from_epoch)
             print(f"Loaded Transformer from epoch {args.start_from_epoch}.")
-        if args.run_name:
-            self.logger = SummaryWriter(f"./runs/{args.run_name}")
-        else:
-            self.logger = SummaryWriter()
+
+        
+        wandb.init(project='MaskGIT',
+                    name=args.run_name, entity='exitudio', config=args)
+        wandb.watch(self.model)
         self.train(args)
 
     def train(self, args):
@@ -54,7 +56,8 @@ class TrainTransformer:
                     step += 1
                     pbar.set_postfix(Transformer_Loss=np.round(loss.cpu().detach().numpy().item(), 4))
                     pbar.update(0)
-                    self.logger.add_scalar("Cross Entropy Loss", np.round(loss.cpu().detach().numpy().item(), 4), (epoch * len_train_dataset) + i)
+                    wandb.log({"Cross Entropy Loss": np.round(loss.cpu().detach().numpy().item(), 4)}, 
+                                step=(epoch * len_train_dataset) + i)
             try:
                 log, sampled_imgs = self.model.log_images(imgs[0:1])
                 vutils.save_image(sampled_imgs.add(1).mul(0.5), os.path.join("results", f"{epoch}.jpg"), nrow=4)
@@ -120,9 +123,9 @@ if __name__ == '__main__':
     parser.add_argument('--num-image-tokens', type=int, default=256, help='Number of image tokens.')
 
     args = parser.parse_args()
-    args.run_name = "<name>"
-    args.dataset_path = r"C:\Users\dome\datasets\landscape"
-    args.checkpoint_path = r".\checkpoints"
+    args.run_name = "1image"
+    args.dataset_path = "./data/"
+    args.checkpoint_path = "./checkpoints/vqgan_epoch_41.pt"
     args.n_layers = 24
     args.dim = 768
     args.hidden_dim = 3072
